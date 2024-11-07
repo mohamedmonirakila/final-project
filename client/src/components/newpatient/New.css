@@ -1,0 +1,18 @@
+.display-area {
+  background-image: url("/images/GLOW-LOGO.svg");
+  background-size: contain; /* Scale the image to fit inside the container */
+  background-repeat: no-repeat; /* This prevents the image from repeating */
+  /* Adjust based on the height of your header */
+  overflow: hidden; /* Prevents vertical scrolling if there’s no content */
+  background-position: bottom;
+  background-position-y: 120%;
+  background-origin: content-box;
+}
+.tooth {
+  cursor: pointer;
+}
+
+.tooltip-inner {
+  max-width: 300px;
+  text-align: left;
+}

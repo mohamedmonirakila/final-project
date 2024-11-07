@@ -1,0 +1,15 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevents horizontal scrolling */
+}
+.display-area {
+  background-image: url("./images/GLOW-LOGO.svg");
+  background-size: contain; /* Scale the image to fit inside the container */
+  background-repeat: no-repeat; /* This prevents the image from repeating */
+  background-position: center; /* This centers the image in the body */
+  min-height: 70vh; /* Adjust based on the height of your header */
+  height: auto;
+  overflow: hidden; /* Prevents vertical scrolling if there’s no content */
+}

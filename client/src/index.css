@@ -1,0 +1,7 @@
+/* Simple CSS file to test background image */
+.displayArea {
+  width: 100px;
+  height: 100px;
+  background-image: url("./images/GLOW-LOGO.svg");
+  background-size: cover;
+}
