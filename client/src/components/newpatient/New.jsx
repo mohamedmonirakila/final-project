@@ -1,22 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
-import './New.css'; // Import your CSS file
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { useParams, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap CSS
+import "./New.css"; // Import your CSS file
 import Header from "../headers";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const New = () => {
-
   const [formData, setFormData] = useState({
-    title: '',
-    name: '',
-    birthdate: '',
-    number: '',
-    history: '',
+    title: "",
+    name: "",
+    birthdate: "",
+    number: "",
+    history: "",
+    address: "",
   });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,38 +30,70 @@ const New = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (
+      !formData.title ||
+      !formData.name ||
+      !formData.number ||
+      !formData.history
+    ) {
+      setError("Please fill all the fields.");
+      return;
+    }
     try {
-      const response = await axios.post('http://localhost:5000/api/add', formData);
+      const response = await axios.post(
+        "http://localhost:5000/api/add",
+        formData
+      );
       setSuccess(response.data.message);
-      setError('');
+      setError("");
       setFormData({
-        title: '',
-        name: '',
-        birthdate: '',
-        number: '',
-        history: '',
-        address: '',
+        title: "",
+        name: "",
+        birthdate: "",
+        number: "",
+        history: "",
+        address: "",
       });
-      alert('Patient added successfully');
-      navigate(`/home`);
+
+      toast.success("Patient added successfully");
+      setTimeout(() => {
+        navigate(`/home`);
+      }, 2000);
     } catch (err) {
       if (err.response) {
         setError(err.response.data.error);
       } else {
-        setError('An error occurred while adding the patient.');
+        setError("An error occurred while adding the patient.");
       }
     }
   };
 
-
-  
   return (
     <div>
       <div className="container">
-      <Header />
-
-        <div className="display-area" style={{ backgroundAttachment: "fixed", minHeight: "85vh" }}>
-          <div className="container pt-3 pb-1" style={{ opacity: 0.9, backgroundColor: 'white' }}>
+        <Header />
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          transition="bounce" // Corrected here
+        />
+        <div
+          className="display-area"
+          style={{ backgroundAttachment: "fixed", minHeight: "85vh" }}
+        >
+          <div
+            className="container pt-3 pb-1"
+            style={{ opacity: 0.9, backgroundColor: "white" }}
+          >
             <h1 className="mb-4">Add New Patient</h1>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -69,7 +103,7 @@ const New = () => {
                   className="form-control"
                   id="title"
                   name="title"
-                  value={formData.title}
+                  value={formData.title || ""}
                   onChange={handleChange}
                   placeholder="Enter patient's Title"
                   required
@@ -82,7 +116,7 @@ const New = () => {
                   className="form-control"
                   id="name"
                   name="name"
-                  value={formData.name}
+                  value={formData.name || ""}
                   onChange={handleChange}
                   placeholder="Enter patient's name"
                   required
@@ -95,7 +129,7 @@ const New = () => {
                   className="form-control"
                   name="birthdate"
                   id="birthdate"
-                  value={formData.birthdate}
+                  value={formData.birthdate || ""}
                   onChange={handleChange}
                   required
                 />
@@ -107,7 +141,7 @@ const New = () => {
                   className="form-control"
                   id="number"
                   name="number"
-                  value={formData.number}
+                  value={formData.number || ""}
                   onChange={handleChange}
                   placeholder="Enter phone number"
                   required
@@ -120,7 +154,7 @@ const New = () => {
                   id="history"
                   rows="3"
                   name="history"
-                  value={formData.history}
+                  value={formData.history || ""}
                   onChange={handleChange}
                   placeholder="Enter medical history"
                   required
@@ -133,10 +167,10 @@ const New = () => {
                   type="text"
                   id="address"
                   name="address"
-                  value={formData.address}
+                  value={formData.address || ""}
                   onChange={handleChange}
                   placeholder="Enter Address"
-                  required  
+                  required
                 ></input>
               </div>
               <button type="submit" className="btn btn-primary mt-2">

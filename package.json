@@ -16,9 +16,19 @@
   "dependencies": {
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
+    "express": "^4.21.1",
     "git": "^0.1.5",
+    "multer": "^1.4.3",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "express-session": "^1.18.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0",
+    "uuid": "^11.0.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.3",
@@ -45,15 +55,12 @@
       "main.js",
       "postgres/**/*",
       "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "dist/",
-        "to": "dist/",
-        "filter": [
-          "**/*"
-        ]
-      }
     ]
-  }
+  },
+  "extraResources": [
+    {
+      "from": "server/node_modules",
+      "to": "resources/app/server/node_modules"
+    }
+  ]
 }

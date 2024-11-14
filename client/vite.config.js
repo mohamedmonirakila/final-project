@@ -12,6 +12,12 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    fs: {
+      allow: [
+        "..", // Allows access to parent directory, adjust if necessary
+        "C:/Users/ASUS/Desktop/final_project/server/images", // Path to your images folder
+      ],
+    },
   },
   resolve: {
     alias: {

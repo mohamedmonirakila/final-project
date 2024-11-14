@@ -1,6 +1,6 @@
 // client/src/App.jsx
 import React from "react";
-import { HashRouter as Router, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import Login from "./components/Login/Login";
 import Home from "./components/homepage/Home";
 import New from "./components/newpatient/New";
@@ -9,23 +9,33 @@ import VisitDetails from "./components/visitdetails/VisitDetails"; // Import Vis
 import UpdatePatient from "./components/updatepatient/UpdatePatient";
 import AllPatients from "./components/all patients/AllPatients";
 import Doctors from "./components/doctors/Doctors";
+import { ToastContainer } from "react-toastify"; // Import ToastContainer
+import "react-toastify/dist/ReactToastify.css"; // Import Toastify CSS
 
 function App() {
   return (
-    <Router>
+    <HashRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/home" element={<Home />} />
         <Route path="/new" element={<New />} />
-        <Route path="/file/:id" element={<File />} />{" "}
-        {/* Dynamic route for patient file */}
-        <Route path="/visit/:id" element={<VisitDetails />} />{" "}
-        {/* Dynamic route for visit details */}
+        <Route path="/file/:id" element={<File />} />
+        <Route path="/visit/:id" element={<VisitDetails />} />
         <Route path="/update/:id" element={<UpdatePatient />} />
         <Route path="/patients" element={<AllPatients />} />
         <Route path="/doctor/summary" element={<Doctors />} />
       </Routes>
-    </Router>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeButton={true}
+        style={{ zIndex: 9999 }}
+      />
+    </HashRouter>
   );
 }
 

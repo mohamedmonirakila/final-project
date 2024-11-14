@@ -1,38 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { useParams, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import Header from "../headers";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const UpdatePatient = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState({
-    title: '',
-    name: '',
-    dateofbirth: '',
-    phone_number: '',
-    history: '',
-    address: '',
+    title: "",
+    name: "",
+    dateofbirth: "",
+    phone_number: "",
+    history: "",
+    address: "",
   });
+  /* const [success, setSuccess] = useState(""); */
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchPatient = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/patient/${id}`);
+        const response = await axios.get(
+          `http://localhost:5000/api/patient/${id}`
+        );
         const patientData = {
-            ...response.data,
-            dateofbirth: response.data.dateofbirth
-              ? format(new Date(response.data.dateofbirth), 'yyyy-MM-dd') // Format as YYYY-MM-DD
-              : '',
-          };
+          ...response.data,
+          dateofbirth: response.data.dateofbirth
+            ? format(new Date(response.data.dateofbirth), "yyyy-MM-dd") // Format as YYYY-MM-DD
+            : "",
+        };
         setPatient(patientData);
-        console.log('Fetched patient data:', patientData); // Debugging line
+        console.log("Fetched patient data:", patientData); // Debugging line
         setLoading(false);
       } catch (err) {
-        setError('Error fetching patient data.');
+        toast.error("Error fetching patient data.");
         setLoading(false);
       }
     };
@@ -49,23 +54,49 @@ const UpdatePatient = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+
     try {
-        const response = await axios.put(`http://localhost:5000/api/update/${id}`, patient); // Use PUT for update
-        alert(response.data.message);
+      const response = await axios.put(
+        `http://localhost:5000/api/update/${id}`,
+        patient
+      ); // Use PUT for update
+      console.log("Patient updated successfully");
+      toast.success("Patient updated successfully!");
+      setTimeout(() => {
         navigate(`/home`);
+      }, 2000);
     } catch (err) {
-        console.error('Error updating patient data:', err);
-        setError('An error occurred while updating the patient.');
+      console.error("Error updating patient data:", err);
+      toast.error("An error occurred while updating the patient.");
     }
-};
+  };
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>{error}</p>;
   return (
     <div className="container">
       <Header />
-          <div className="display-area" style={{ backgroundAttachment: "fixed", minHeight: "85vh" }}>
-        <div className="container pt-3 pb-1" style={{ opacity: 0.9, backgroundColor: 'white' }}>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        transition="bounce" // Corrected here
+      />
+      <div
+        className="display-area"
+        style={{ backgroundAttachment: "fixed", minHeight: "85vh" }}
+      >
+        <div
+          className="container pt-3 pb-1"
+          style={{ opacity: 0.9, backgroundColor: "white" }}
+        >
           <h1 className="mb-4">Update Patient Information</h1>
           <form onSubmit={handleUpdate}>
             <div className="form-group">
@@ -75,7 +106,7 @@ const UpdatePatient = () => {
                 className="form-control"
                 id="title"
                 name="title"
-                value={patient.title || ''} 
+                value={patient.title || ""}
                 onChange={handleInputChange}
                 placeholder="Enter patient's Title"
                 required
@@ -88,7 +119,7 @@ const UpdatePatient = () => {
                 className="form-control"
                 id="name"
                 name="name"
-                value={patient.name || ''}
+                value={patient.name || ""}
                 onChange={handleInputChange}
                 placeholder="Enter patient's name"
                 required
@@ -100,7 +131,9 @@ const UpdatePatient = () => {
                 type="date"
                 className="form-control"
                 name="dateofbirth"
-                value={patient.dateofbirth ? patient.dateofbirth.split('T')[0] : ''}
+                value={
+                  patient.dateofbirth ? patient.dateofbirth.split("T")[0] : ""
+                }
                 id="dateofbirth"
                 onChange={handleInputChange}
                 required
@@ -113,7 +146,7 @@ const UpdatePatient = () => {
                 className="form-control"
                 id="phone_number"
                 name="phone_number"
-                value={patient.phone_number || ''}
+                value={patient.phone_number || ""}
                 onChange={handleInputChange}
                 placeholder="Enter phone number"
                 required
@@ -126,36 +159,36 @@ const UpdatePatient = () => {
                 id="history"
                 rows="3"
                 name="history"
-                value={patient.history || ''} 
+                value={patient.history || ""}
                 onChange={handleInputChange}
                 placeholder="Enter medical history"
                 required
               ></textarea>
             </div>
             <div className="form-group">
-                <label htmlFor="history">Address</label>
-                <input
-                  className="form-control"
-                  id="address"
-                  type="text"
-                  name="address"
-                  value={patient.address || ''} 
-                  onChange={handleInputChange}
-                  placeholder="Enter Address"
-                  required
-                ></input>
-              </div>
+              <label htmlFor="history">Address</label>
+              <input
+                className="form-control"
+                id="address"
+                type="text"
+                name="address"
+                value={patient.address || ""}
+                onChange={handleInputChange}
+                placeholder="Enter Address"
+                required
+              ></input>
+            </div>
             <button type="submit" className="btn btn-primary mt-2">
               Update Patient
             </button>
           </form>
-        </div> 
+        </div>
+      </div>
     </div>
-          </div>
   );
 };
 export default UpdatePatient;
- /* return (
+/* return (
     <div className="container">
       <header className="d-flex flex-wrap justify-content-center border-bottom">
           <a
@@ -276,4 +309,3 @@ export default UpdatePatient;
   );
 };
 */
-

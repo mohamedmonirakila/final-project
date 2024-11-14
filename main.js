@@ -8,20 +8,26 @@ const fs = require("fs");
 let serverProcess;
 let mainWindow; // Ensure mainWindow is defined globally
 
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "production"; // or 'development' based on your need
+}
+
 const isDev = process.env.NODE_ENV !== "production";
 const port = process.env.VITE_PORT || 5173;
 
 const filePath = isDev
   ? `http://localhost:5173`
-  : `file://${path.join(__dirname, "resources", "app", "dist", "index.html")}`;
+  : `${path.join(__dirname, "dist", "index.html")}`;
 
 console.log("Loading file from:", filePath);
 
 function startBackend(callback) {
-  serverProcess = spawn("node", ["server/index.js"], {
+  const backendPath = path.join(__dirname, "server", "index.js");
+
+  serverProcess = spawn("node", [backendPath], {
     stdio: "inherit",
     shell: false,
-    detached: true,
+    detached: false,
     windowsHide: true,
   });
 
@@ -111,7 +117,7 @@ if (!gotTheLock) {
   });
 
   app.on("ready", () => {
-    console.log("App is ready in production mode");
+    console.log("NODE_ENV:", process.env.NODE_ENV);
     startPostgres((err) => {
       if (err) {
         console.error("Error starting PostgreSQL:", err);
@@ -150,6 +156,7 @@ const { app, BrowserWindow } = require("electron");
 const { spawn } = require("child_process");
 const { startPostgres } = require("./utils/startBackEnd"); // Adjust path if needed
 require("dotenv").config();
+
 
 const isDev = process.env.NODE_ENV !== "production";
 const port = process.env.VITE_PORT || 5173;

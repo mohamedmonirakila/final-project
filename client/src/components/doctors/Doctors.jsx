@@ -99,8 +99,8 @@ const Doctors = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {doctors.map((doctor) => (
-                    <tr key={doctor.id}>
+                  {doctors.map((doctor, index) => (
+                    <tr key={doctor.id || index}>
                       <td>{doctor.doctor_name}</td>
                       <td>{doctor.total_cost}</td>
                       <td>{doctor.total_amount_paid}</td>

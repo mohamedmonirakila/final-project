@@ -1,20 +1,44 @@
-import express from 'express';
-import cors from 'cors';
-import patientRoutes from './routes/patientRoutes.js'; // Import routes
-  
+import express from "express";
+import cors from "cors";
+import patientRoutes from "./routes/patientRoutes.js"; // Import routes
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const port = 5000;
 
 app.use(cors());
+
+/* app.use(
+  multer({ storage: fileStorage }).fields([
+    { name: "pre", maxCount: 10 },
+    { name: "post", maxCount: 10 },
+    { name: "intra_oral", maxCount: 10 },
+    { name: "extra_oral", maxCount: 10 },
+  ])
+);
+ */
 app.use(express.json()); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bodies
 
-
+// Serve static files from images directory
+app.use("/images", express.static(path.join(__dirname, "images")));
 // Use the routes
-app.use('/api',  patientRoutes);
+app.use("/api", patientRoutes);
 
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+  console.log(`Server running on port ${port}`);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection:", reason);
 });
 
 /* import express from "express";

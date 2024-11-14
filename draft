@@ -1,0 +1,12 @@
+
+// removed
+,
+    "extraResources": [
+      {
+        "from": "dist/",
+        "to": "dist/",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
