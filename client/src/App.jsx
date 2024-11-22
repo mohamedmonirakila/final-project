@@ -9,6 +9,7 @@ import VisitDetails from "./components/visitdetails/VisitDetails"; // Import Vis
 import UpdatePatient from "./components/updatepatient/UpdatePatient";
 import AllPatients from "./components/all patients/AllPatients";
 import Doctors from "./components/doctors/Doctors";
+import NewDoctor from "./components/doctors/AddDoctor";
 import { ToastContainer } from "react-toastify"; // Import ToastContainer
 import "react-toastify/dist/ReactToastify.css"; // Import Toastify CSS
 
@@ -21,6 +22,7 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/home" element={<Home />} />
         <Route path="/new" element={<New />} />
+        <Route path="/newdoctor" element={<NewDoctor />} />
         <Route path="/file/:id" element={<File />} />
         <Route path="/visit/:id" element={<VisitDetails />} />
         <Route path="/update/:id" element={<UpdatePatient />} />

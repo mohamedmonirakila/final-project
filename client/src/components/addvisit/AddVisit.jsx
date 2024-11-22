@@ -18,13 +18,20 @@ const AddVisitForm = ({ patientId }) => {
   const [amountPaid, setAmountPaid] = useState("");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const API_URL = "http://localhost:5000";
 
   // Fetch doctor names when the component mounts
 
   useEffect(() => {
     const fetchDoctors = async () => {
+      const token = localStorage.getItem("authToken");
       try {
-        const response = await axios.get("http://localhost:5000/api/doctors");
+        const response = await axios.get(`${API_URL}/api/doctors`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
         setDoctors(response.data);
       } catch (err) {
         console.error("Error fetching doctors:", err);
@@ -57,12 +64,7 @@ const AddVisitForm = ({ patientId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validate input
-    if (cost <= 0 || amountPaid < 0) {
-      toast.error("Cost and Amount Paid must be greater than zero");
-      return;
-    }
+    const token = localStorage.getItem("authToken");
 
     const formData = new FormData();
     formData.append("doctor_name", doctorName);
@@ -96,16 +98,13 @@ const AddVisitForm = ({ patientId }) => {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/addvisit",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          timeout: 10000,
-        }
-      );
+      const response = await axios.post(`${API_URL}/api/addvisit`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+        timeout: 10000,
+      });
       toast.success("Visit added successfully");
       navigate(`/home`);
     } catch (err) {

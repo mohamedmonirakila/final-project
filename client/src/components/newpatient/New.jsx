@@ -27,6 +27,7 @@ const New = () => {
       [name]: value,
     }));
   };
+  const API_URL = "http://localhost:5000";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,10 +42,12 @@ const New = () => {
       return;
     }
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/add",
-        formData
-      );
+      const token = localStorage.getItem("authToken");
+      const response = await axios.post(`${API_URL}/api/add`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       setSuccess(response.data.message);
       setError("");
       setFormData({

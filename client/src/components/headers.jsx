@@ -1,7 +1,35 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap CSS
 
+const decodeJWT = (token) => {
+  if (!token) return null;
+  const base64Url = token.split(".")[1];
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  const jsonPayload = decodeURIComponent(
+    atob(base64)
+      .split("")
+      .map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`)
+      .join("")
+  );
+  return JSON.parse(jsonPayload);
+};
+
 const Header = (props) => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    // Get the token from localStorage
+    const token = localStorage.getItem("authToken");
+
+    if (token) {
+      // Decode the token to get user role (assuming it's in the token payload)
+      const decodedToken = decodeJWT(token);
+
+      if (decodedToken && decodedToken.role === "admin") {
+        setIsAdmin(true); // Set the user as admin if the role is 'admin'
+      }
+    }
+  }, []);
+
   return (
     <div>
       <header className="d-flex flex-wrap justify-content-center border-bottom">
@@ -45,6 +73,12 @@ const Header = (props) => {
               className={`nav-link ${
                 props.customClassD ? props.customClassD : ""
               }`}
+              // Disable or add class if not admin
+              aria-disabled={!isAdmin}
+              style={{
+                pointerEvents: isAdmin ? "auto" : "none",
+                opacity: isAdmin ? 1 : 0.5,
+              }}
             >
               Doctors
             </a>

@@ -3,19 +3,39 @@ import { Link } from "react-router-dom"; // Import Link from react-router-dom
 import "bootstrap/dist/css/bootstrap.min.css"; // Import Bootstrap CSS
 import axios from "axios";
 import Header from "../headers";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { jwtDecode } from "jwt-decode";
 
 const AllPatients = () => {
   const { id } = useParams(); // Get the patient ID from the URL
+  const navigate = useNavigate();
   const [patients, setPatients] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [amountsDue, setAmountsDue] = useState({});
+  const [role, setRole] = useState(null);
+  const API_URL = "http://localhost:5000";
 
   useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+        setRole(decodedToken.role); // Set the role from the decoded token
+      } catch (err) {
+        console.error("Error decoding token:", err);
+      }
+    }
     const fetchPatients = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/patients");
+        const response = await axios.get(`${API_URL}/api/patients`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
         setPatients(response.data);
         setLoading(false);
       } catch (err) {
@@ -25,17 +45,24 @@ const AllPatients = () => {
       }
     };
     fetchPatients();
-  }, []);
+  }, [patients]);
 
   // Fetch amounts due once patients are available
   useEffect(() => {
+    const token = localStorage.getItem("authToken");
     if (patients && patients.length > 0) {
       const fetchAmountsDue = async () => {
         try {
           const updatedAmountsDue = {};
           for (const patient of patients) {
             const response = await axios.get(
-              `http://localhost:5000/api/amountdue/${patient.id}`
+              `${API_URL}/api/amountdue/${patient.id}`,
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+              }
             );
             updatedAmountsDue[patient.id] = response.data.amountDue;
           }
@@ -47,6 +74,31 @@ const AllPatients = () => {
       fetchAmountsDue();
     }
   }, [patients]);
+
+  // Function to handle patient deletion
+  const deletePatient = async (patientId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+
+      // Call the delete patient API
+      const response = await axios.delete(
+        `${API_URL}/api/patient/${patientId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        toast.success("Patient, visits, and payments deleted successfully.");
+        navigate("/patients"); // Navigate to a patients list page or another relevant page
+      }
+    } catch (err) {
+      console.error("Error deleting patient:", err);
+      toast.error("An error occurred while deleting the patient.");
+    }
+  };
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
@@ -78,10 +130,10 @@ const AllPatients = () => {
                   {patients.map((patient) => (
                     <tr
                       key={patient.id}
-                      /* onClick={() =>
-                        (window.location.href = `/file/${patient.id}`)
+                      onClick={() =>
+                        (window.location.href = `#/file/${patient.id}`)
                       }
-                      style={{ cursor: "pointer" }} */
+                      style={{ cursor: "pointer" }}
                     >
                       <td>{patient.title}</td>
                       <td>{patient.name}</td>
@@ -92,14 +144,19 @@ const AllPatients = () => {
                           ? `$${amountsDue[patient.id].toFixed(2)}`
                           : "Loading..."}
                       </td>
-                      <td>
-                        <Link
-                          to={`/file/${patient.id}`}
-                          className="btn btn-link"
-                        >
-                          View Details
-                        </Link>
-                      </td>
+                      {role === "admin" && (
+                        <td>
+                          <button
+                            className="btn btn-danger"
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click from firing
+                              deletePatient(patient.id);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -5,7 +5,10 @@ import "./File.css"; // Import your CSS file
 import axios from "axios";
 import AddVisitForm from "../addvisit/AddVisit";
 import Header from "../headers";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { jwtDecode } from "jwt-decode";
 
 const File = () => {
   const { id } = useParams(); // Get the patient ID from the URL
@@ -14,32 +17,77 @@ const File = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [remainingAmount, setRemainingAmount] = useState("0.00"); // State for Amount Due
+  const [role, setRole] = useState(""); // State to store the user's role
+  const API_URL = "http://localhost:5000";
+  const navigate = useNavigate();
+  const fetchData = async () => {
+    const token = localStorage.getItem("authToken");
+    setLoading(true);
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`, // Add Authorization header
+        "Content-Type": "application/json", // Optional, but recommended
+      };
+      const [patientResponse, visitsResponse, amountDueResponse] =
+        await Promise.all([
+          axios.get(`${API_URL}/api/patient/${id}`, { headers }),
+          axios.get(`${API_URL}/api/visits/${id}`, { headers }),
+          axios.get(`${API_URL}/api/amountdue/${id}`, { headers }),
+        ]);
+
+      setPatient(patientResponse.data);
+      setVisits(visitsResponse.data);
+      setRemainingAmount(amountDueResponse.data.amountDue);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Error fetching data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [patientResponse, visitsResponse, amountDueResponse] =
-          await Promise.all([
-            axios.get(`http://localhost:5000/api/patient/${id}`),
-            axios.get(`http://localhost:5000/api/visits/${id}`),
-            axios.get(`http://localhost:5000/api/amountdue/${id}`),
-          ]);
+    const token = localStorage.getItem("authToken");
 
-        setPatient(patientResponse.data);
-        setVisits(visitsResponse.data);
-        setRemainingAmount(amountDueResponse.data.amountDue);
+    if (token) {
+      try {
+        const decodedToken = jwtDecode(token);
+        setRole(decodedToken.role); // Set the role from the decoded token
       } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Error fetching data.");
-      } finally {
-        setLoading(false);
+        console.error("Error decoding token:", err);
       }
-    };
+    }
 
     fetchData();
   }, [id]);
 
+  const deleteVisit = async (visitId) => {
+    const token = localStorage.getItem("authToken");
+
+    try {
+      const response = await axios.delete(
+        `${API_URL}/api/deletevisit/${visitId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Handle response data directly (axios auto-parses JSON)
+      toast.success(response.data.message || "Visit deleted successfully");
+
+      // Fetch updated visits data after successful delete
+      fetchData(); // Function to reload visits
+    } catch (err) {
+      console.error("Error deleting visit:", err);
+      toast.error(
+        err.response?.data?.error ||
+          "An error occurred while deleting the visit."
+      );
+    }
+  };
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
@@ -101,7 +149,7 @@ const File = () => {
                     <tr>
                       <th>Date</th>
                       <th>Doctor</th>
-                      <th>Reasno</th>
+                      <th>Reason</th>
                       <th>Cost</th>
                       <th>Payment</th>
                     </tr>
@@ -120,6 +168,19 @@ const File = () => {
                         <td>{visit.reason}</td>
                         <td>{visit.cost}</td>
                         <td>{visit.amount_paid}</td>
+                        {role === "admin" && (
+                          <td>
+                            <button
+                              className="btn btn-danger"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click from firing
+                                deleteVisit(visit.id);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

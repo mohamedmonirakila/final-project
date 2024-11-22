@@ -20,13 +20,18 @@ const UpdatePatient = () => {
   /* const [success, setSuccess] = useState(""); */
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const API_URL = "http://localhost:5000";
 
   useEffect(() => {
+    const token = localStorage.getItem("authToken");
     const fetchPatient = async () => {
       try {
-        const response = await axios.get(
-          `http://localhost:5000/api/patient/${id}`
-        );
+        const response = await axios.get(`${API_URL}/api/patient/${id}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
         const patientData = {
           ...response.data,
           dateofbirth: response.data.dateofbirth
@@ -54,16 +59,19 @@ const UpdatePatient = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    const token = localStorage.getItem("authToken");
 
     try {
-      const response = await axios.put(
-        `http://localhost:5000/api/update/${id}`,
-        patient
-      ); // Use PUT for update
+      const response = await axios.put(`${API_URL}/api/update/${id}`, patient, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }); // Use PUT for update
       console.log("Patient updated successfully");
       toast.success("Patient updated successfully!");
       setTimeout(() => {
-        navigate(`/home`);
+        navigate(`/file/${id}`);
       }, 2000);
     } catch (err) {
       console.error("Error updating patient data:", err);

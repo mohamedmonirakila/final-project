@@ -8,15 +8,17 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate(); // Initialize useNavigate hook
-
+  const API_URL = "http://localhost:5000";
   const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_URL}/api/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ username, password }),
       });
@@ -24,7 +26,9 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("token", data.token); // Store token in localStorage
+        // Save the token to localStorage
+        localStorage.setItem("authToken", data.token);
+        console.log("Login successful!", data);
         navigate("/home"); // Redirect to /home on successful login
       } else {
         setError(data.error);

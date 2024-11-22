@@ -11,18 +11,21 @@ const Doctors = () => {
   const [error, setError] = useState(null);
   const [startDate, setStartDate] = useState("2020-01-01");
   const [endDate, setEndDate] = useState("2050-01-01");
+  const API_URL = "http://localhost:5000";
 
   // Fetch doctor summary based on start and end dates
   useEffect(() => {
+    const token = localStorage.getItem("authToken");
     if (startDate && endDate) {
       const fetchDoctorSummary = async () => {
         try {
-          const response = await axios.get(
-            "http://localhost:5000/api/doctor/summary",
-            {
-              params: { startDate, endDate },
-            }
-          );
+          const response = await axios.get(`${API_URL}/api/doctor/summary`, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            params: { startDate, endDate },
+          });
           setDoctors(response.data);
           console.log(doctors);
           setLoading(false);
@@ -53,6 +56,18 @@ const Doctors = () => {
     <div>
       <div className="container">
         <Header customClassD="active" />
+        <header className="py-2 border-bottom">
+          <div className="container d-flex flex-wrap justify-content-center">
+            <a
+              href="#/newdoctor"
+              className="d-flex align-items-center mb-3 mb-lg-0 me-lg-auto link-body-emphasis text-decoration-none"
+            >
+              <button type="button" className="btn btn-primary">
+                Add New Doctor
+              </button>
+            </a>
+          </div>
+        </header>
         <div
           className="displayArea"
           style={{ backgroundAttachment: "fixed", minHeight: "85vh" }}

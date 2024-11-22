@@ -1,11 +1,16 @@
 import express from "express";
 import db from "../db.js"; // Import the database connection
 import multer from "multer";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import path from "path";
+import fs from "fs";
 import jwt from "jsonwebtoken";
 import { fileStorage } from "../multerConfig.js"; // Import the multer configuration
 import { fileURLToPath } from "url";
+import {
+  authenticateToken,
+  authorizeRoles,
+} from "../middleware/authenticateToken.js"; // Import the middleware
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +43,9 @@ router.post("/login", async (req, res) => {
     const user = result.rows[0];
 
     if (!user) {
+      console.warn(
+        `Failed login attempt: username "${username}" does not exist.`
+      );
       return res.status(401).json({ error: "Invalid username or password." });
     }
 
@@ -46,18 +54,29 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid username or password." });
     }
 
-    const token = jwt.sign({ userId: user.id }, "your_jwt_secret", {
-      expiresIn: "1d",
-    });
+    const token = jwt.sign(
+      { userId: user.id, role: user.role },
+      "glowdentalclinic",
+      {
+        expiresIn: "1d",
+      }
+    );
 
-    res.json({ token });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      },
+    });
   } catch (err) {
     console.error("Error during login:", err);
     res.status(500).json({ error: "An error occurred during login." });
   }
 });
-// Add new patient
-router.post("/add", async (req, res) => {
+// Add new patients
+router.post("/add", authenticateToken, async (req, res) => {
   const { title, name, birthdate, number, history, address } = req.body;
   const missingFields = [];
 
@@ -95,7 +114,7 @@ router.post("/add", async (req, res) => {
 });
 
 // Search for patient
-router.post("/search", async (req, res) => {
+router.post("/search", authenticateToken, async (req, res) => {
   const { searchBy, query } = req.body;
 
   try {
@@ -125,7 +144,7 @@ router.post("/search", async (req, res) => {
   }
 });
 
-router.get("/patient/:id", async (req, res) => {
+router.get("/patient/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -148,7 +167,7 @@ router.get("/patient/:id", async (req, res) => {
 });
 
 // Get all patients
-router.get("/patients", async (req, res) => {
+router.get("/patients", authenticateToken, async (req, res) => {
   try {
     const result = await db.query(
       `SELECT
@@ -170,7 +189,7 @@ router.get("/patients", async (req, res) => {
 });
 
 // Update patient
-router.put("/update/:id", async (req, res) => {
+router.put("/update/:id", authenticateToken, async (req, res) => {
   const patientId = req.params.id;
   const { title, name, dateofbirth, phone_number, history, address } = req.body;
 
@@ -196,9 +215,174 @@ router.put("/update/:id", async (req, res) => {
   }
 });
 
+// delete patient
+router.delete(
+  "/patient/:id",
+  authenticateToken,
+  authorizeRoles("admin"),
+  async (req, res) => {
+    const patientId = req.params.id;
+
+    try {
+      // Delete all payments related to the patient
+      const deletePayments = await db.query(
+        `DELETE FROM payments WHERE patient_id = $1`,
+        [patientId]
+      );
+      // Delete all visits related to the patient
+      const deleteVisits = await db.query(
+        `DELETE FROM visits WHERE patient_id = $1`,
+        [patientId]
+      );
+
+      // Delete the patient record itself
+      const deletePatient = await db.query(
+        `DELETE FROM patients WHERE id = $1 RETURNING *`,
+        [patientId]
+      );
+
+      if (deletePatient.rows.length === 0) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+
+      res.status(200).json({
+        message: "Patient, visits, and payments deleted successfully.",
+        deletedPatient: deletePatient.rows[0],
+      });
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
+
 //add visit
 
-router.post("/addvisit", upload, async (req, res) => {
+router.get("/doctors", authenticateToken, async (req, res) => {
+  try {
+    const doctors = await db.query(
+      "SELECT id, doctor_name AS name FROM doctors"
+    );
+    res.json(doctors.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Failed to fetch doctors" });
+  }
+});
+
+router.get(
+  "/doctor/summary",
+  authenticateToken,
+  authorizeRoles("admin"),
+  async (req, res) => {
+    const { startDate, endDate } = req.query; // Get the start and end dates from the query parameters
+
+    try {
+      const query = `
+                SELECT
+                    doctors.doctor_name,
+                    COALESCE(SUM(payments.amountpaid), 0) AS total_amount_paid,
+                    COALESCE(SUM(visits.cost), 0) AS total_cost
+                FROM
+                    doctors
+                LEFT JOIN visits ON doctors.id = visits.doctor_id
+                LEFT JOIN payments ON visits.id = payments.visit_id
+                WHERE
+                    visits.visit_date BETWEEN $1 AND $2
+                    AND payments.paymentdate BETWEEN $1 AND $2
+                GROUP BY
+                    doctors.doctor_name;
+            `;
+      const values = [startDate, endDate];
+      const result = await db.query(query, values);
+      console.log(endDate);
+      res.json(result.rows);
+      console.log(result.rows);
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).json({
+        error: "An error occurred while fetching doctor summary data.",
+      });
+    }
+  }
+);
+
+router.post(
+  "/doctor",
+  authenticateToken,
+  authorizeRoles("admin"),
+  async (req, res) => {
+    const { doctor_name } = req.body;
+    console.log(doctor_name);
+    if (!doctor_name) {
+      return res.status(400).send("Doctor name is required.");
+    }
+
+    try {
+      const query = "INSERT INTO doctors (doctor_name) VALUES ($1) RETURNING *";
+      const values = [doctor_name];
+
+      const result = await db.query(query, values); // Assuming 'db' is your PostgreSQL client instance
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error inserting doctor:", error);
+      res.status(500).send("An error occurred while adding the doctor.");
+    }
+  }
+);
+//calculate amount due
+router.get("/amountdue/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Fetch all visits and payments for the patient
+    const visits = await db.query(
+      "SELECT cost FROM visits WHERE patient_id = $1",
+      [id]
+    );
+    const payments = await db.query(
+      "SELECT amountpaid FROM payments WHERE patient_id = $1",
+      [id]
+    );
+
+    // Calculate total cost and total payments
+    const totalCost = visits.rows.reduce(
+      (sum, visit) => sum + parseFloat(visit.cost),
+      0
+    );
+    const totalPayments = payments.rows.reduce(
+      (sum, payment) => sum + parseFloat(payment.amountpaid),
+      0
+    );
+
+    // Calculate amount due (excluding current visit)
+    const amountDue = totalCost - totalPayments;
+
+    // Send amount due to frontend
+    res.json({ amountDue });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ error: "An error occurred while calculating the amount due" });
+  }
+});
+
+router.get("/visits/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const visits = await db.query(
+      "SELECT TO_CHAR(v.visit_date,'DD/MM/YYYY') AS visit_date, d.doctor_name, v.reason, v.cost, v.id, COALESCE(p.amountpaid, 0) AS amount_paid FROM visits v JOIN doctors d ON v.doctor_id = d.id LEFT JOIN payments p ON v.id = p.visit_id WHERE v.patient_id =$1 ORDER BY v.visit_date;",
+      [id]
+    );
+    res.json(visits.rows);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Failed to fetch visits" });
+  }
+});
+
+router.post("/addvisit", authenticateToken, upload, async (req, res) => {
   console.log("Received files:", req.files); // Log files
   console.log("Received form data:", req.body);
 
@@ -286,73 +470,9 @@ router.post("/addvisit", upload, async (req, res) => {
   }
 });
 
-router.get("/doctors", async (req, res) => {
-  try {
-    const doctors = await db.query(
-      "SELECT id, doctor_name AS name FROM doctors"
-    );
-    res.json(doctors.rows);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Failed to fetch doctors" });
-  }
-});
-
-//calculate amount due
-router.get("/amountdue/:id", async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    // Fetch all visits and payments for the patient
-    const visits = await db.query(
-      "SELECT cost FROM visits WHERE patient_id = $1",
-      [id]
-    );
-    const payments = await db.query(
-      "SELECT amountpaid FROM payments WHERE patient_id = $1",
-      [id]
-    );
-
-    // Calculate total cost and total payments
-    const totalCost = visits.rows.reduce(
-      (sum, visit) => sum + parseFloat(visit.cost),
-      0
-    );
-    const totalPayments = payments.rows.reduce(
-      (sum, payment) => sum + parseFloat(payment.amountpaid),
-      0
-    );
-
-    // Calculate amount due (excluding current visit)
-    const amountDue = totalCost - totalPayments;
-
-    // Send amount due to frontend
-    res.json({ amountDue });
-  } catch (err) {
-    console.error(err);
-    res
-      .status(500)
-      .json({ error: "An error occurred while calculating the amount due" });
-  }
-});
-
-router.get("/visits/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    const visits = await db.query(
-      "SELECT TO_CHAR(v.visit_date,'DD/MM/YYYY') AS visit_date, d.doctor_name, v.reason, v.cost, v.id, COALESCE(p.amountpaid, 0) AS amount_paid FROM visits v JOIN doctors d ON v.doctor_id = d.id LEFT JOIN payments p ON v.id = p.visit_id WHERE v.patient_id =$1 ORDER BY v.visit_date;",
-      [id]
-    );
-    res.json(visits.rows);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ error: "Failed to fetch visits" });
-  }
-});
-
 //get visit details
 
-router.get("/visit/:id", async (req, res) => {
+router.get("/visit/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
     const visit = await db.query(
@@ -366,6 +486,7 @@ router.get("/visit/:id", async (req, res) => {
       // Convert image buffers to base64 if they exist
       const visitWithImages = {
         ...visitData,
+        patient_id: visitData.patient_id, // Include patient_id here
         pre: visitData.pre ? JSON.parse(visitData.pre) : [], // Parsing JSON stored as an array of paths
         post: visitData.post ? JSON.parse(visitData.post) : [],
         intra_oral: visitData.intra_oral
@@ -377,7 +498,6 @@ router.get("/visit/:id", async (req, res) => {
       };
 
       res.json([visitWithImages]); // Send the visit data along with base64 images
-      console.log(visit.rows);
     } else {
       res.status(404).json({ error: "Visit not found" });
     }
@@ -387,37 +507,198 @@ router.get("/visit/:id", async (req, res) => {
   }
 });
 
-router.get("/doctor/summary", async (req, res) => {
-  const { startDate, endDate } = req.query; // Get the start and end dates from the query parameters
+// update visit
+router.put(
+  "/updatevisit/:id",
+  authenticateToken,
+  authorizeRoles(["admin", "doctor"]),
+  upload,
+  async (req, res) => {
+    const { id } = req.params;
+    const {
+      doctor_name,
+      cost,
+      amount_paid,
+      reason,
+      treatment,
+      pre,
+      post,
+      intra_oral,
+      extra_oral,
+    } = req.body;
+    const missingFields = [];
+
+    // Validate fields
+    if (!doctor_name) missingFields.push("doctor_name");
+    if (!reason) missingFields.push("reason");
+    if (!treatment) missingFields.push("treatment");
+    if (cost === undefined) missingFields.push("cost");
+    if (amount_paid === undefined) missingFields.push("amount_paid");
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        error: `Please complete the following required fields: ${missingFields.join(
+          ", "
+        )}.`,
+      });
+    }
+
+    try {
+      // Retrieve the existing visit to preserve patient_id
+      const visitResult = await db.query(
+        "SELECT patient_id, pre, post, intra_oral, extra_oral FROM visits WHERE id = $1",
+        [id]
+      );
+
+      if (visitResult.rows.length === 0) {
+        return res.status(404).json({ error: "Visit not found" });
+      }
+
+      const visitData = visitResult.rows[0];
+      const patient_id = visitResult.rows[0].patient_id; // Preserve the patient_id from the existing visit
+
+      // Parse old image data (ensure they are arrays, even if they are null or empty strings)
+      const oldPreImages = visitData.pre ? JSON.parse(visitData.pre) : [];
+      const oldPostImages = visitData.post ? JSON.parse(visitData.post) : [];
+      const oldIntraOralImages = visitData.intra_oral
+        ? JSON.parse(visitData.intra_oral)
+        : [];
+      const oldExtraOralImages = visitData.extra_oral
+        ? JSON.parse(visitData.extra_oral)
+        : [];
+
+      const doctorResult = await db.query(
+        "SELECT id FROM doctors WHERE doctor_name = $1",
+        [doctor_name]
+      );
+      const doctor_id = doctorResult.rows[0].id;
+
+      // Delete old images that are not part of the updated request
+      function deleteImages(oldImages, newImages) {
+        const imagesToDelete = oldImages.filter(
+          (img) => !newImages.includes(img)
+        );
+
+        imagesToDelete.forEach((imagePath) => {
+          console.log(__dirname);
+          const filePath = path.join(__dirname, "../", imagePath);
+          console.log(filePath);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        });
+      }
+
+      // Handle Pre Images
+      const preImages =
+        req.files?.pre && req.files.pre.length > 0
+          ? req.files.pre.map((file) => `images/${file.filename}`)
+          : JSON.parse(visitData.pre || "[]"); // Use old pre images if no new ones
+
+      // Delete Old Pre Images Not in Final List
+      deleteImages(JSON.parse(visitData.pre || "[]"), preImages);
+
+      // Repeat the Same for Post Images
+      const postImages =
+        req.files?.post && req.files.post.length > 0
+          ? req.files.post.map((file) => `images/${file.filename}`)
+          : JSON.parse(visitData.post || "[]");
+
+      deleteImages(JSON.parse(visitData.post || "[]"), postImages);
+
+      // Handle Intra-Oral Images
+      const intraOralImages =
+        req.files?.intra_oral && req.files.intra_oral.length > 0
+          ? req.files.intra_oral.map((file) => `images/${file.filename}`)
+          : JSON.parse(visitData.intra_oral || "[]");
+
+      deleteImages(JSON.parse(visitData.intra_oral || "[]"), intraOralImages);
+
+      // Handle Extra-Oral Images
+      const extraOralImages =
+        req.files?.extra_oral && req.files.extra_oral.length > 0
+          ? req.files.extra_oral.map((file) => `images/${file.filename}`)
+          : JSON.parse(visitData.extra_oral || "[]");
+
+      deleteImages(JSON.parse(visitData.extra_oral || "[]"), extraOralImages);
+
+      const result = await db.query(
+        `UPDATE visits 
+        SET 
+          doctor_id = $1, 
+          patient_id = $2, 
+          reason = $3, 
+          treatment = $4, 
+          pre = $5, 
+          post = $6, 
+          intra_oral = $7, 
+          extra_oral = $8, 
+          cost = $9 
+        WHERE id = $10 
+        RETURNING *`,
+        [
+          doctor_id,
+          patient_id, // Preserve the patient_id from the current visit
+          reason,
+          treatment,
+          JSON.stringify(preImages),
+          JSON.stringify(postImages),
+          JSON.stringify(intraOralImages),
+          JSON.stringify(extraOralImages),
+          cost,
+          id, // the visit ID to update
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "Visit not found" });
+      }
+      // Update the payment record (if needed)
+      await db.query(
+        "UPDATE payments SET amountpaid = $1 WHERE visit_id = $2",
+        [amount_paid, id]
+      );
+      console.log("updated");
+      res.status(200).json({ message: "Visit updated successfully" });
+    } catch (err) {
+      console.error(err.message);
+      res.status(500).json({
+        error: "An error occurred while updating the visit.",
+        details: err.message,
+      });
+    }
+  }
+);
+
+//delete visit
+router.delete("/deletevisit/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params; // Get visit ID from URL params
+  console.log("Delete request received for visit ID:", id); // Debugging log
 
   try {
-    const query = `
-                SELECT
-                    doctors.doctor_name,
-                    COALESCE(SUM(payments.amountpaid), 0) AS total_amount_paid,
-                    COALESCE(SUM(visits.cost), 0) AS total_cost
-                FROM
-                    doctors
-                LEFT JOIN visits ON doctors.id = visits.doctor_id
-                LEFT JOIN payments ON visits.id = payments.visit_id
-                WHERE
-                    visits.visit_date BETWEEN $1 AND $2
-                    AND payments.paymentdate BETWEEN $1 AND $2
-                GROUP BY
-                    doctors.doctor_name;
-            `;
-    const values = [startDate, endDate];
-    const result = await db.query(query, values);
-    console.log(endDate);
-    res.json(result.rows);
-    console.log(result.rows);
+    // First, delete associated payment record
+    await db.query("DELETE FROM payments WHERE visit_id = $1", [id]);
+
+    // Then, delete the visit itself
+    const result = await db.query(
+      "DELETE FROM visits WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Visit not found" });
+    }
+
+    res.status(200).json({ message: "Visit deleted successfully" });
   } catch (err) {
     console.error(err.message);
-    res
-      .status(500)
-      .json({ error: "An error occurred while fetching doctor summary data." });
+    res.status(500).json({
+      error: "An error occurred while deleting the visit.",
+      details: err.message,
+    });
   }
 });
+
 export default router;
 
 /* SELECT

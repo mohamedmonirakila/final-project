@@ -1,45 +1,54 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const SearchPatient = ({ className, formClass, inputClass, buttonClass }) => {
-  const [searchBy, setSearchBy] = useState('phone_number');
-  const [query, setQuery] = useState('');
-  const [error, setError] = useState('');
+  const [searchBy, setSearchBy] = useState("phone_number");
+  const [query, setQuery] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const API_URL = "http://localhost:5000";
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    setError('');
-    
+    setError("");
+
     try {
-      const response = await axios.post('http://localhost:5000/api/search', { searchBy, query });
-      
-      console.log('Search Response:', response.data); // Log the response data
-  
+      const token = localStorage.getItem("authToken");
+      const response = await axios.post(
+        `${API_URL}/api/search`,
+        { searchBy, query },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log("Search Response:", response.data); // Log the response data
+
       if (response.data && response.data.id) {
-      navigate(`/file/${response.data.id}`, { state: { patient: response.data } });
+        navigate(`/file/${response.data.id}`, {
+          state: { patient: response.data },
+        });
       } else {
-        setError('Patient not found. add new patient.');
+        setError("Patient not found. add new patient.");
       }
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
-    } else {
-        console.error('Error occurred while searching:', err);
-        setError('An error occurred while searching.');
-    }
+      } else {
+        console.error("Error occurred while searching:", err);
+        setError("An error occurred while searching.");
+      }
     }
   };
 
   return (
     <div>
-      <form
-        className={formClass}
-        role="search"
-        onSubmit={handleSearch}
-      >
-        <select   
+      <form className={formClass} role="search" onSubmit={handleSearch}>
+        <select
           name="searchBy"
           className={className}
           value={searchBy}
@@ -56,7 +65,9 @@ const SearchPatient = ({ className, formClass, inputClass, buttonClass }) => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button type="submit" className={buttonClass}>Search</button>
+        <button type="submit" className={buttonClass}>
+          Search
+        </button>
       </form>
       {error && <p className="error-message">{error}</p>}
     </div>
