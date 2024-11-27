@@ -1,0 +1,73 @@
+{
+  "name": "glow_clinic",
+  "version": "1.0.0",
+  "description": "A dental clinic management application.",
+  "author": "Mohamed Monir",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "electron-dev": "concurrently --raw \"npm run dev --prefix client\" \"cross-env NODE_ENV=development electron .\"",
+    "dist": "cross-env NODE_ENV=production electron-builder",
+    "debug": "electron . --debug",
+    "start": "cross-env NODE_ENV=production electron ."
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-session": "^1.18.0",
+    "git": "^0.1.5",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.3",
+    "pg": "^8.12.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "uuid": "^11.0.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.3",
+    "concurrently": "^9.1.0",
+    "electron": "^33.0.2",
+    "electron-builder": "^25.1.8",
+    "vite": "^5.4.10"
+  },
+  "build": {
+    "appId": "com.example.glowclinic",
+    "productName": "Glow Clinic",
+    "asar": false,
+    "directories": {
+      "output": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "./client/public/images/GLOW-LOGO.ico"
+    },
+    "files": [
+      "server/**/*",
+      "dist/**/*",
+      "utils/**/*",
+      "main.js",
+      "postgres/**/*",
+      "node_modules/**/*"
+    ]
+  },
+  "extraResources": [
+    {
+      "from": "server/node_modules",
+      "to": "resources/app/server/node_modules"
+    }
+  ]
+}
